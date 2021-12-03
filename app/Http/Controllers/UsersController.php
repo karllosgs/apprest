@@ -2,7 +2,9 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
+use App\Http\Requests\LoginRequest;
+use App\Http\Requests\LogoutRequest;
+use App\Http\Requests\UsersRequest;
 use App\Models\User;
 use Exception;
 use Illuminate\Support\Facades\Hash;
@@ -26,7 +28,7 @@ class UsersController extends Controller
      * @param  \Illuminate\Http\Request  $request
      * @return \Illuminate\Http\Response
      */
-    public function store(Request $request)
+    public function store(UsersRequest $request)
     {
         $request['password'] = Hash::make($request['password']);
         return User::create($request->all());
@@ -50,7 +52,7 @@ class UsersController extends Controller
      * @param  int  $id
      * @return \Illuminate\Http\Response
      */
-    public function update(Request $request, User $user)
+    public function update(UsersRequest $request, User $user)
     {
         $user->update($request->all());
         return $user;
@@ -72,19 +74,15 @@ class UsersController extends Controller
      * Login/token.
      *
      */
-    public function login(Request $request)
+    public function login(LoginRequest $request)
     {
-        $request->validate([
-            'email' => 'required|email',
-            'password' => 'required',
-            'tokenName' => 'required'
-        ]);
-
         $user = User::where('email', $request->email)->first();
 
         if (!$user || ! Hash::check($request->password, $user->password)) {
             throw new Exception("invalid credentials.", Response::HTTP_UNAUTHORIZED);
         }
+
+        $user->tokens()->delete();
 
         return $user->createToken($request->tokenName)->plainTextToken;
     }
@@ -93,12 +91,8 @@ class UsersController extends Controller
      * Logout/token.
      *
      */
-    public function logout(Request $request)
+    public function logout(LogoutRequest $request)
     {
-        $request->validate([
-            'email' => 'required|email',
-        ]);
-
         $user = User::where('email', $request->email)->first();
 
         return $user->tokens()->delete();
